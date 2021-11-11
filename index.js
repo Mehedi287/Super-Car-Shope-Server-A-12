@@ -17,6 +17,7 @@ async function run() {
         const servicesCollection = database.collection('services');
         const reviewsCollection = database.collection('reviews');
         const ordersCollection = database.collection('orders');
+        const usersCollection = database.collection('users');
         //--------============ get services ==================
         app.get("/services", async (req, res) => {
             const cursor = servicesCollection.find();
@@ -25,7 +26,7 @@ async function run() {
 
         })
         //================= add a service ====================
-        app.post("services", async (req, res) => {
+        app.post("/services", async (req, res) => {
             const service = req.body;
             const result = await servicesCollection.insertOne(service);
             res.json(result)
@@ -35,6 +36,38 @@ async function run() {
             const cursor = ordersCollection.find();
             const orders = await cursor.toArray();
             res.json(orders)
+        })
+        // ===========send email and name =============
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            let isAdmin = false;
+            if (user?.role === 'admin') {
+                isAdmin = true;
+            }
+            res.json({ admin: isAdmin });
+        })
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await usersCollection.insertOne(user);
+            console.log(result);
+            res.json(result);
+        });
+        app.put('/users', async (req, res) => {
+            const user = req.body;
+            const filter = { email: user.email };
+            const options = { upsert: true };
+            const updateDoc = { $set: user };
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.json(result);
+        });
+        app.put('/users/admin', async (req, res) => {
+            const user = req.body;
+            const filter = { email: user.email };
+            const updateDoc = { $set: { role: 'admin' } };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.json(result);
         })
         // ==========================delete a single order================ 
         app.delete("/orders/:id", async (req, res) => {
@@ -75,7 +108,7 @@ async function run() {
         app.post("/orders", async (req, res) => {
             const order = req.body;
 
-            const result = ordersCollection.insertOne(order);
+            const result = await ordersCollection.insertOne(order);
             res.json(result)
         })
 
